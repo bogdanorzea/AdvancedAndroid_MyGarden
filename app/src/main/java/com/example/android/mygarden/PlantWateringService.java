@@ -38,8 +38,7 @@ import static com.example.android.mygarden.provider.PlantContract.PATH_PLANTS;
 public class PlantWateringService extends IntentService {
 
     public static final String ACTION_WATER_PLANTS = "com.example.android.mygarden.action.water_plants";
-    public static final String ACTION_UPDATE_WIDGETS = "com.example.android.mygarden.action.update_widgets";
-
+    public static final String ACTION_UPDATE_PLANT_WIDGETS = "com.example.android.mygarden.action.update_plant_widgets";
 
     public PlantWateringService() {
         super("PlantWateringService");
@@ -57,9 +56,15 @@ public class PlantWateringService extends IntentService {
         context.startService(intent);
     }
 
+    /**
+     * Starts this service to perform UpdatePlantWidgets action with the given parameters. If
+     * the service is already performing a task this action will be queued.
+     *
+     * @see IntentService
+     */
     public static void startActionUpdatePlantWidgets(Context context) {
         Intent intent = new Intent(context, PlantWateringService.class);
-        intent.setAction(ACTION_UPDATE_WIDGETS);
+        intent.setAction(ACTION_UPDATE_PLANT_WIDGETS);
         context.startService(intent);
     }
 
@@ -72,7 +77,7 @@ public class PlantWateringService extends IntentService {
             final String action = intent.getAction();
             if (ACTION_WATER_PLANTS.equals(action)) {
                 handleActionWaterPlants();
-            } else if (ACTION_UPDATE_WIDGETS.equals(action)){
+            } else if (ACTION_UPDATE_PLANT_WIDGETS.equals(action)) {
                 handleActionUpdatePlantWidgets();
             }
         }
@@ -91,40 +96,41 @@ public class PlantWateringService extends IntentService {
         getContentResolver().update(
                 PLANTS_URI,
                 contentValues,
-                PlantContract.PlantEntry.COLUMN_LAST_WATERED_TIME+">?",
+                PlantContract.PlantEntry.COLUMN_LAST_WATERED_TIME + ">?",
                 new String[]{String.valueOf(timeNow - PlantUtils.MAX_AGE_WITHOUT_WATER)});
     }
 
-    private void handleActionUpdatePlantWidgets(){
-        Uri PLANTS_URI = BASE_CONTENT_URI.buildUpon().appendPath(PATH_PLANTS).build();
 
+    /**
+     * Handle action UpdatePlantWidgets in the provided background thread
+     */
+    private void handleActionUpdatePlantWidgets() {
+        //Query to get the plant that's most in need for water (last watered)
+        Uri PLANT_URI = BASE_CONTENT_URI.buildUpon().appendPath(PATH_PLANTS).build();
         Cursor cursor = getContentResolver().query(
-                PLANTS_URI,
+                PLANT_URI,
                 null,
                 null,
                 null,
-                PlantContract.PlantEntry.COLUMN_LAST_WATERED_TIME);
-
-        int imgResource = R.drawable.grass;
-        if (cursor != null && cursor.getCount()>0){
+                PlantContract.PlantEntry.COLUMN_LAST_WATERED_TIME
+        );
+        // Extract the plant details
+        int imgRes = R.drawable.grass; // Default image in case our garden is empty
+        if (cursor != null && cursor.getCount() > 0) {
             cursor.moveToFirst();
-
-            int indexPlantType = cursor.getColumnIndex(PlantContract.PlantEntry.COLUMN_PLANT_TYPE);
-            int indexCreated = cursor.getColumnIndex(PlantContract.PlantEntry.COLUMN_CREATION_TIME);
-            int indexLastWatered = cursor.getColumnIndex(PlantContract.PlantEntry.COLUMN_LAST_WATERED_TIME);
-
+            int createTimeIndex = cursor.getColumnIndex(PlantContract.PlantEntry.COLUMN_CREATION_TIME);
+            int waterTimeIndex = cursor.getColumnIndex(PlantContract.PlantEntry.COLUMN_LAST_WATERED_TIME);
+            int plantTypeIndex = cursor.getColumnIndex(PlantContract.PlantEntry.COLUMN_PLANT_TYPE);
             long timeNow = System.currentTimeMillis();
-            int plantType = cursor.getInt(indexPlantType);
-            long createdAt = cursor.getLong(indexCreated);
-            long wateredAt = cursor.getLong(indexLastWatered);
-
+            long wateredAt = cursor.getLong(waterTimeIndex);
+            long createdAt = cursor.getLong(createTimeIndex);
+            int plantType = cursor.getInt(plantTypeIndex);
             cursor.close();
-
-            imgResource = PlantUtils.getPlantImageRes(this, timeNow-createdAt, timeNow-wateredAt, plantType);
+            imgRes = PlantUtils.getPlantImageRes(this, timeNow - createdAt, timeNow - wateredAt, plantType);
         }
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
         int[] appWidgetIds = appWidgetManager.getAppWidgetIds(new ComponentName(this, PlantWidgetProvider.class));
-
-        PlantWidgetProvider.updatePlantWidgets(this, appWidgetManager, appWidgetIds, imgResource);
+        //Now update all widgets
+        PlantWidgetProvider.updatePlantWidgets(this, appWidgetManager, imgRes, appWidgetIds);
     }
 }
