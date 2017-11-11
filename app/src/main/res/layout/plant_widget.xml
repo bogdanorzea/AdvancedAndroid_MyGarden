@@ -1,9 +1,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal">
+    android:orientation="vertical">
 
-    <!-- TODO (1): Add an ImageView that displays water_drop_blue to act as the watering button -->
+    <ImageView
+        android:id="@+id/widget_water_drop_image"
+        android:background="@drawable/water_drop_blue"
+        android:layout_width="wrap_content"
+        android:layout_gravity="center_horizontal"
+
+        android:layout_height="wrap_content" />
 
     <ImageView
         android:id="@+id/widget_plant_image"
