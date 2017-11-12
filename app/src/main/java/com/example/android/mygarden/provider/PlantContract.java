@@ -43,5 +43,6 @@ public class PlantContract {
         public static final String COLUMN_PLANT_TYPE = "plantType";
         public static final String COLUMN_CREATION_TIME = "createdAt";
         public static final String COLUMN_LAST_WATERED_TIME = "lastWateredAt";
+        public static final long INVALID_PLANT_ID = -1L;
     }
 }
