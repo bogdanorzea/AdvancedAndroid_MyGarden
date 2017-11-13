@@ -16,11 +16,14 @@ package com.example.android.mygarden;
 * limitations under the License.
 */
 
+import android.annotation.TargetApi;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -29,16 +32,47 @@ import com.example.android.mygarden.provider.PlantContract;
 import com.example.android.mygarden.ui.MainActivity;
 import com.example.android.mygarden.ui.PlantDetailActivity;
 
+import static android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH;
+
 public class PlantWidgetProvider extends AppWidgetProvider {
 
     // setImageViewResource to update the widget’s image
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager,
                                 int imgRes, long plantId, boolean showWater, int appWidgetId) {
+        RemoteViews views;
+        Bundle appWidgetOptions = appWidgetManager.getAppWidgetOptions(appWidgetId);
+        if (appWidgetOptions.getInt(OPTION_APPWIDGET_MIN_WIDTH) < 300) {
+            views = getSinglePlantRemoteView(context, imgRes, plantId, showWater);
+        } else {
+            views = getGardenGridRemoteView(context);
+        }
 
-        // TODO (4): separate the updateAppWidget logic into getGardenGridRemoteView and getSinglePlantRemoteView
-        // TODO (5): Use getAppWidgetOptions to get widget width and use the appropriate RemoteView method
-        // TODO (6): Set the PendingIntent template in getGardenGridRemoteView to launch PlantDetailActivity
-        
+        // Instruct the widget manager to update the widget
+        appWidgetManager.updateAppWidget(appWidgetId, views);
+
+    }
+
+    private static RemoteViews getGardenGridRemoteView(Context context) {
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_grid_view);
+
+        Intent gridIntent = new Intent(context, GridWidgetService.class);
+        views.setRemoteAdapter(R.id.widget_grid_view, gridIntent);
+
+        Intent detailActivityIntent = new Intent (context, PlantDetailActivity.class);
+        PendingIntent pendingIntentTemplate = PendingIntent.getActivity(
+                context,
+                0,
+                detailActivityIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT);
+        views.setPendingIntentTemplate(R.id.widget_grid_view, pendingIntentTemplate);
+
+        views.setEmptyView(R.id.widget_grid_view, R.id.empty_view);
+
+        return views;
+    }
+
+    private static RemoteViews getSinglePlantRemoteView(Context context, int imgRes, long plantId, boolean showWater) {
         Intent intent;
         if (plantId == PlantContract.INVALID_PLANT_ID) {
             intent = new Intent(context, MainActivity.class);
@@ -65,8 +99,8 @@ public class PlantWidgetProvider extends AppWidgetProvider {
         wateringIntent.putExtra(PlantWateringService.EXTRA_PLANT_ID, plantId);
         PendingIntent wateringPendingIntent = PendingIntent.getService(context, 0, wateringIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         views.setOnClickPendingIntent(R.id.widget_water_button, wateringPendingIntent);
-        // Instruct the widget manager to update the widget
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+
+        return views;
     }
 
     @Override
